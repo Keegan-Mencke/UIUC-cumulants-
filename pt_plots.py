@@ -37,49 +37,63 @@ for momentum in np.array([0.0, 1.0, 5.0]):
         fucking_columns = str(i)
         cor4e0 = pd.read_csv("ptcor4e0_"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
         cor2e0 = pd.read_csv("ptcor2e0_"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
-
-        cor4e2 = pd.read_csv("ptcor4e2_"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
-        cor2e2 = pd.read_csv( "ptcor2e2_"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
-    
-        cor4e4 = pd.read_csv("ptcor4e4_"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
-        cnac_idk = pd.read_csv("ptcnac_idk"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
-        cnbd_idk = pd.read_csv("ptcnbd_idk"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
-        cnbc_idk = pd.read_csv("ptcnbc_idk"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten() 
-        cnad_idk = pd.read_csv("ptcnad_idk"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
-        
         wweight = pd.read_csv("ptwweight"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
-    
-        #the masking shit to remove the 0 and the 1234 (formerly the nan )  
-        #######################
-        #Maybe implemnet different masking for each subevent group, so save more events. Right now it is only events that have everything. But this could take up more memory,
-        mask = (cor4e4 == 0) | ( cor4e4==1234) 
+        mask = (cor4e0 == 0) | ( cor4e0==1234) 
         #apply same masking to all arries, keeps indexs teh same and removes nan values
         cor4e0 = cor4e0[~mask]
         cor2e0 = cor2e0[~mask]
+        weight = wweight[~mask] 
+        slicee = len(cor4e0) //20 
+        # print(slicee)
+        for j in range(0, len(cor4e0)-len(cor4e0)%20, slicee):
+    
+            mean_store4e0.append(np.average(cor4e0[j:j+slicee], weights = weight[j: j+ slicee])-2*np.average(cor2e0[j:j+slicee],weights = weight[j: j+ slicee])**2)
+            mean_store2e0.append(np.average(cor2e0[j:j+slicee],weights = weight[j: j+ slicee]))
+
+        
+        del cor4e0
+        del cor2e0
+        cor4e2 = pd.read_csv("ptcor4e2_"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
+        cor2e2 = pd.read_csv( "ptcor2e2_"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
+        #wweight = pd.read_csv("ptwweight"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
+        mask = (cor4e2 == 0) | ( cor4e2==1234)
         cor4e2 = cor4e2[~mask]
-        cor2e2 = cor2e2[~mask] 
+        cor2e2 = cor2e2[~mask]
+        weight = wweight[~mask] 
+        slicee = len(cor4e2) //20
+        for j in range(0, len(cor4e2)-len(cor4e2)%20, slicee):
+            mean_store4e2.append(np.average(cor4e2[j:j+slicee], weights = weight[j: j+ slicee])-2*np.average(cor2e2[j:j+slicee],weights = weight[j: j+ slicee])**2)
+            mean_store2e2.append(np.average(cor2e2[j:j+slicee],weights = weight[j: j+ slicee]))
+
+        
+        del cor4e2
+        del cor2e2
+        cor4e4 = pd.read_csv("ptcor4e4_"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
+        cnac_idk = pd.read_csv("ptcnac_idk"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
+        cnbd_idk = pd.read_csv("ptcnbd_idk"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
+        cnbc_idk = pd.read_csv("ptcnbc_idk"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
+        cnad_idk = pd.read_csv("ptcnad_idk"+str(momentum)+".csv", usecols = [fucking_columns]).to_numpy().flatten()
+        mask = (cor4e4 == 0) | ( cor4e4==1234) 
+        #apply same masking to all arries, keeps indexs teh same and removes nan values
+         
         cor4e4 = cor4e4[~mask] 
         cnac_idk = cnac_idk[~mask] 
         cnbd_idk = cnbd_idk[~mask]
         cnad_idk = cnad_idk[~mask] 
         cnbc_idk = cnbc_idk[~mask]
         
-        wweight = wweight[~mask] 
+        weight = wweight[~mask] 
         print(i)
         
         
     
-        slicee = len(cor4e0) //20
-        for j in range(0, len(cor4e0)-len(cor4e0)%20, slicee):  
-            mean_store4e0.append(np.average(cor4e0[j:j+slicee], weights = wweight[j: j+ slicee])-2*np.average(cor2e0[j:j+slicee],weights = wweight[j: j+ slicee])**2)
-            mean_store2e0.append(np.average(cor2e0[j:j+slicee],weights = wweight[j: j+ slicee]))
-            
-            mean_store4e2.append(np.average(cor4e2[j:j+slicee], weights = wweight[j: j+ slicee])-2*np.average(cor2e2[j:j+slicee],weights = wweight[j: j+ slicee])**2)
-            mean_store2e2.append(np.average(cor2e2[j:j+slicee],weights = wweight[j: j+ slicee]))
-            
-            mean_store4e4.append(np.average(cor4e4[j:j+slicee],weights = wweight[j: j+ slicee])
-                               -np.average(cnac_idk[j:j+slicee] , weights = wweight[j: j+ slicee])*np.average(cnbd_idk[j:j+slicee], weights = wweight[j: j+ slicee])
-                              -np.average(cnad_idk[j:j+slicee], weights = wweight[j: j+ slicee])*np.average(cnbc_idk[j:j+slicee], weights = wweight[j: j+ slicee]))
+        slicee = len(cor4e4) //20
+        # print(slicee)
+        for j in range(0, len(cor4e4)-len(cor4e4)%20, slicee):
+            mean_store4e4.append(np.average(cor4e4[j:j+slicee],weights = weight[j: j+ slicee])
+                               -np.average(cnac_idk[j:j+slicee] , weights = weight[j: j+ slicee])*np.average(cnbd_idk[j:j+slicee], weights = weight[j: j+ slicee])
+                              -np.average(cnad_idk[j:j+slicee], weights = weight[j: j+ slicee])*np.average(cnbc_idk[j:j+slicee], weights = weight[j: j+ slicee]))
+    
     
         cn4e0[i//binsss_size] = np.array(mean_store4e0).mean()
         cn4stde0[i//binsss_size]=np.array(mean_store4e0).std()/np.sqrt(20)
