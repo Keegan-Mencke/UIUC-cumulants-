@@ -1,0 +1,11 @@
+sample/starting/toy model for GNN work
+access the campus cluster at https://computes.illinois.edu/resources/icrn/
+
+Should be able to run the file right from their. can copy past the file code into a notebook
+the pythia dataset is included in this foulder as well. uploud that to the cluster
+In first drop down choose 2nd chocice (pytorch)
+In second dropdown choose second option (GPU)
+
+will also have to import all the lieberryies into python
+ run pip install pandas
+do this for all the imports
