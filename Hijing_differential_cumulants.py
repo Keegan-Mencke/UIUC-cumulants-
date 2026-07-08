@@ -1,6 +1,6 @@
 import numpy as np   
 import pandas as pd      
-import uproot as ur  
+import uproot as ur   
 
 file = ur.open(r"data/1p_pbHijing_1M.root") #, not events in mult range 60-120 is about 640000
 #file = ur.open(r"data/pbpb_mb_500k.root") 
@@ -10,9 +10,9 @@ file = ur.open(r"data/1p_pbHijing_1M.root") #, not events in mult range 60-120 i
 # List all keys (e.g., trees, histograms)    
 print(file.keys())    
   
-# Access a TTree     
+# Access a TTree      
 startt = 0 
-endd = 100000
+endd = -1 
 tree = file["tree;1"]   #I have no clue why its jet_tree;1;1
 phi  = tree['phi'].array(entry_start = startt, entry_stop = endd)  # Replace with actual tree name
 pt = tree['pt'].array(entry_start = startt, entry_stop = endd)
@@ -43,7 +43,7 @@ import uproot as ur
 #def Qn
 #paper 1 https://arxiv.org/pdf/1010.0233 
 #paper 2 https://arxiv.org/pdf/1701.03830
-def Qmoment(a, n):   
+def Qmoment(a, n):    
     return np.sum(np.exp(1j*n*a)).item() 
     
 # these functions now return the correlation and then the weight which is basically number of combinations
@@ -72,7 +72,10 @@ def dcor_4(phi, pt, n, POI_start=1 , POI_end = 2): #equ 32, with M_q=q_n =0, wei
     phi = np.array(phi); pt = np.array(pt)
     mask = (pt>=POI_start) & (pt<= POI_end )
     POI = phi[mask]
-    Ref = phi[pt<POI_start]
+    '''if (POI_start<3):
+        Ref = phi[pt<POI_start]
+    else:'''
+    Ref = phi[pt<3]
     mp = len(POI)
     M=len(Ref) 
     if (M<=2) or  (mp==0):
@@ -81,13 +84,16 @@ def dcor_4(phi, pt, n, POI_start=1 , POI_end = 2): #equ 32, with M_q=q_n =0, wei
     Qnc = np.conjugate(Qmoment(Ref, n) ) #conjugate of Qn is what is needed the most
     Qn = Qmoment(Ref, n)  #conjugate of Qn is what is needed the most
     Q2n = Qmoment(Ref, 2*n)
-    pn = Qmoment(POI, n) 
-    return np.real( (pn*Qn*Qnc*Qnc-pn*Qn*Q2n-2*M*pn*Qnc+2*pn*Qnc) / (mp*M*(M-1)*(M-2))), mp*M*(M-1)*(M-2) 
+    pn = Qmoment(POI, n ) 
+    return np.real( (pn*Qn*Qnc*Qnc-pn*Qn*np.conjugate(Q2n)-2*M*pn*Qnc+2*pn*Qnc) / (mp*M*(M-1)*(M-2))), mp*M*(M-1)*(M-2) 
 def dcor_2(phi, pt, n, POI_start=1 , POI_end = 2): #equ 28, with M_q=q_n =0, weights by eq. 24
     phi = np.array(phi); pt = np.array(pt)
     mask = (pt>=POI_start) & (pt<=POI_end )
     POI = phi[mask]
-    Ref = phi[pt<POI_start]
+    '''if (POI_start<3):
+        Ref = phi[pt<POI_start]
+    else:'''
+    Ref = phi[pt<3]
     mp = len(POI)
     M=len(Ref) 
     if (M==0) or (mp==0):
@@ -134,57 +140,58 @@ def nudge_v2(phi, target_v2=0.5, psi2=0.0,
         phi %= 2*np.pi
     return phi
     
-def cors(phi, weight, pt,  n, POI_start=1 , POI_end = 2, momentum_cut = 0, nudge = False):
-    M = len(phi)
-    if (nudge ==True):
-        phi = nudge_v2(phi)
-    phi = phi[pt>momentum_cut]
+def Full_0sub(phi,pt,  n, POI_start=1 , POI_end = 2):
+    #returns dcor4, dcor4w, dcor2, dcor2w
     
-    cor2, cor2w = corrilation_2(phi, n)
-    cor4, cor4w = corrilation_4(phi, n)
-    dcor2, dcor2w = dcor_2(phi, pt, n, POI_start=1,  POI_end = 2)
-    dcor4, dcor4w = dcor_4(phi, pt, n, POI_start=1,  POI_end = 2)
-    d =  [dcor4, dcor4w, dcor2 , dcor2w ]
-    c= [cor4, cor4w, cor2, cor2w]
-    return d, c# dcor4, dcor2, cor4, cor2
-    
-'''def REF_POI_togehter_0sub(phi, weight, pt,  n, POI_cut=1, momentum_cut = 0, nudge = False):
-    M = len(phi)
-    if (nudge ==True):
-        phi = nudge_v2(phi)
-    phi = phi[pt>momentum_cut]
-    #def dcor_4(phi, pt, n, POI_cut): #equ 32, with M_q=q_n =0, weights by eq. 25
+    #phi = phi[pt>momentum_cut]
+    #def dcor_4(phi, pt, n, POI_cut): #equ 32, with, weights by eq. 25
     phi = np.array(phi); pt = np.array(pt)
-    mask = (pt>=POI_cut) & (pt<=POI_cut+1 )
-    POI = phi[mask]
-    Ref = phi[pt<POI_cut]
-    mp = len(POI)
-    M=len(Ref) 
-        if (M<=2) or  (mp==0):
-            #return np.nan 
-            return -1234, -1234
-        Qnc = np.conjugate(Qmoment(Ref, n) ) #conjugate of Qn is what is needed the most
-        Qn = Qmoment(Ref, n)  #conjugate of Qn is what is needed the most
-        Q2n = Qmoment(Ref, 2*n)
-        pn = Qmoment(POI, n) 
-        return np.real( (pn*Qn*Qnc*Qnc-pn*Qn*Q2n-2*M*pn*Qnc+2*pn*Qnc) / (mp*M*(M-1)*(M-2))), mp*M*(M-1)*(M-2) 
-    def dcor_2(phi, pt, n, POI_cut): #equ 28, with M_q=q_n =0, weights by eq. 24
-        
-        if (M==0) or (mp==0):
-            #return np.nan 
-            return -1234, -1234
-        return np.real(np.conjugate(Qmoment(Ref, n))*Qmoment(POI, n)/mp/M), mp*M
-
-    dcor2, dcor2w = dcor_2(phi, pt, n, POI_cut)
-    dcor4, dcor4w = dcor_4(phi, pt, n, POI_cut)
+    mask_POI = (pt>=POI_start) & (pt<= POI_end) 
+    mask_Both = (pt>=POI_start) & (pt<= POI_end) & (pt<3)
+    POI = phi[mask_POI]
+    Ref = phi[pt<3]
+    Both = phi[mask_Both]
+    mp = len(POI); M=len(Ref); mq = len(Both)
+    pn = Qmoment(POI, n)
+    Qn = Qmoment(Ref, n); Qnc = np.conjugate(Qn)
+    qn = Qmoment(Both,  n); q2n = Qmoment(Both, 2*n)
+    if ( (mp==0 or M==0 )and mq==0):
+        return -1234, -1234, -1234, -1234
+    d2cor = (pn*Qnc-mq)/(mp*M-mq)
+    d2corw = (mp*M-mq)
+    if (M<3 or ((M==0 or mp==0) and mq==0)):
+        return -1234, -1234, d2cor, d2corw
+    d4cor =( (pn*Qn*Qnc*Qnc -q2n*Qnc*Qnc
+             -pn*Qn*np.conjugate(Qmoment(Ref, 2*n)) -2*M*pn*Qnc
+             -2*mq*np.abs(Qn)**2+7*qn*Qnc
+             -Qn*np.conjugate(qn)+q2n*np.conjugate(Qmoment(Ref, 2*n))
+             +2 *pn*Qnc+2*mq*M-6*mq
+            )/( (mp*M-3*mq)*(M-1)*(M-2))       )
+    d4corw = (mp*M-3*mq)*(M-1)*(M-2)
+    return d4cor, d4corw, d2cor, d2corw
+    
+def cors(phi, weight, pt,  n, POI_start=1 , POI_end = 2, momentum_cut = 0, nudge = False):
+    # M = len(phi)
+    if (nudge ==True):
+        phi = nudge_v2(phi)
+    #phi = phi[pt>momentum_cut]
+    
+    cor2, cor2w = corrilation_2(phi, n, momentum_cut = POI_start)
+    cor4, cor4w = corrilation_4(phi, n, momentum_cut = POI_start)
+    #if (POI_start<3):
+    dcor4, dcor4w, dcor2, dcor2w = Full_0sub(phi,  pt,  n, POI_start =  POI_start, POI_end = POI_end)
+    #else: 
+       # dcor2, dcor2w = dcor_2(phi, pt, n, POI_start=1,  POI_end = 2)
+        #dcor4, dcor4w = dcor_4(phi, pt, n, POI_start=1,  POI_end = 2)
     d =  [dcor4, dcor4w, dcor2 , dcor2w ]
     c= [cor4, cor4w, cor2, cor2w]
-    return d, c# dcor4, dcor2, cor4, cor2'''
+    return d, c # dcor4, dcor2, cor4, cor2
+
 
 def sub2_diff_cors(phi, weight, pt, rapity, n,  POI_start=1 , POI_end = 2):
     #the correlators are given by eq 19 and 20 in this paper https://arxiv.org/pdf/1701.03830. cummulants are found in the cms paper
     maska = (rapity >= -2.4) & (rapity < 0)
-    maskb = (rapity >= 0 )& (rapity<=2.4)
+    maskb = (rapity >= 0 ) & (rapity<=2.4)
     phi_a = phi[maska] 
     phi_b = phi[maskb]
 
@@ -194,17 +201,24 @@ def sub2_diff_cors(phi, weight, pt, rapity, n,  POI_start=1 , POI_end = 2):
     POI_a = phi_a[(pt_a>=POI_start) & (pt_a<=POI_end)]
     POI_b = phi_b[(pt_b>=POI_start) & (pt_b<=POI_end)] 
 
+    '''if (POI_start<3):
+        phi_a = phi_a[pt_a<POI_start]
+        phi_b = phi_b[pt_b<POI_start]
+    else:'''
+    phi_a = phi_a[pt_a<3]
+    phi_b = phi_b[pt_b<3] 
+
     M_a = len(phi_a); M_b = len(phi_b)
     m_a = len(POI_a); m_b = len(POI_b)
 
     Qa = Qmoment(phi_a, n); Qb = Qmoment(phi_b, n); Q2a = Qmoment(phi_a, 2*n); Q2b = Qmoment(phi_b, 2*n)
     pa = Qmoment(POI_a, n); pb = Qmoment(POI_b, n); p2a = Qmoment(POI_a, 2*n); p2b = Qmoment(POI_b, 2*n)
-    if (m_a<=1 or M_b<=1):
+    if (m_a<=1 or M_b<=1 or M_a<=1):
         dcor2a= -1234 *np.ones(6)
     else:
         dcor2a =  [(pa**2-p2a)*np.conjugate(Qb**2-Q2b)/(m_a*(m_a-1)*M_b*(M_b-1)), m_a*(m_a-1)*M_b*(M_b-1), pa*np.conjugate(Qb)/m_a/M_b, m_a*M_b,
                 Qa*np.conjugate(Qb)/M_a/M_b, M_a*M_b]
-    if (M_a<=1 or m_b<=1):
+    if (M_a<=1 or m_b<=1 or M_b<=1):
         dcor2b= -1234 *np.ones(6)
     else:
         dcor2b =  [(Qa**2-Q2a)*np.conjugate(pb**2-p2b)/(M_a*(M_a-1)*m_b*(m_b-1)), M_a*(M_a-1)*m_b*(m_b-1), Qa*np.conjugate(pb)/M_a/m_b, M_a*m_b,
@@ -233,6 +247,17 @@ def sub4_diff_cors(phi, weight, pt, rapity, n,  POI_start=1 , POI_end = 2):
     POI_b = phi_b[(pt_b>=POI_start) & (pt_b<=POI_end)] 
     POI_c = phi_c[(pt_c>=POI_start) & (pt_c<=POI_end)]
     POI_d = phi_d[(pt_d>=POI_start) & (pt_d<=POI_end)]
+
+    '''if (POI_start<3):
+        phi_a = phi_a[pt_a<POI_start]
+        phi_b = phi_b[pt_b<POI_start]
+        phi_c = phi_c[pt_c<POI_start]
+        phi_d = phi_d[pt_d<POI_start]
+    else:'''
+    phi_a = phi_a[pt_a<3]
+    phi_b = phi_b[pt_b<3]
+    phi_c = phi_c[pt_c<3]
+    phi_d = phi_d[pt_d<3]
 
     M_a = len(phi_a); M_b = len(phi_b); M_c = len(phi_c); M_d = len(phi_d);
     m_a = len(POI_a); m_b = len(POI_b); m_c = len(POI_c); m_d = len(POI_d);
@@ -424,10 +449,17 @@ def pt_binning(arr_list, mult_range, n, POI_start=1 , POI_end = 2, momentum_cut=
             mask = (dcor[i]==-1234)
             dcor[i] = dcor[i][~mask]
             dcor[i+1] = dcor[i+1][~mask] 
-        #for i in range(0, 4, 2):
+        #for i in range(0, 4, 2): 
             #mask = (cor[i]==-1234)
             cor[i] = cor[i][~mask]
             cor[i+1] = cor[i+1][~mask] 
+        # for no weights testing
+        '''dn2 = np.average(dcor[2])
+        dn4 = np.average(dcor[0] )-2*np.average(dcor[2])*np.average(cor[2])
+
+        cn2 = np.average(cor[2])
+        cn4 = np.average(cor[0])-2*np.average(cor[2])**2'''
+        
         dn2 = np.average(dcor[2], weights=dcor[3])
         dn4 = np.average(dcor[0], weights=dcor[1])-2*np.average(dcor[2], weights=dcor[3])*np.average(cor[2], weights= cor[3])
 
@@ -506,12 +538,11 @@ def pt_binning(arr_list, mult_range, n, POI_start=1 , POI_end = 2, momentum_cut=
     return [np.mean(mean_storage_dcor4e4), np.std(mean_storage_dcor4e4), np.mean(mean_storage_dcor4e0), np.std(mean_storage_dcor4e0),
             np.mean(mean_storage_dcor2e0), np.std(mean_storage_dcor2e0), np.mean(mean_storage_cor4e0), np.std(mean_storage_cor4e0), 
             np.mean(mean_storage_cor2e0), np.std(mean_storage_cor2e0), np.mean(mean_storage_dcor4e2), np.std(mean_storage_dcor4e2)] 
-    #shape is mean, std, for dn4e4, dn4, dn2, cn4, cn2   
-
-#data theif of MCS plot. 
+    #shape is mean, std, for dn4e4, dn4, dn2, cn4, cn2    
+    
 
 #note that manual inspection of the points reveals that teh first point is not right for the green triangles. 
-import pandas as pd
+'''import pandas as pd
 import matplotlib.pyplot as plt
 
 CMS_data = pd.read_csv("saved_runs/CMS_plot.csv")
@@ -526,6 +557,28 @@ ax.plot(CMS_data['pT_GeV_green'], CMS_4sub,
 ax.axhline(0, color='black', linestyle='--')
 ax.set_xlabel('$p_T$ (GeV)')
 ax.set_ylabel(r'd$_2$\{4\} ')
+ax.legend()
+plt.show()'''
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+CMS_data = pd.read_csv("filled_series_wide.csv")
+
+fig, ax = plt.subplots()
+CMS_0sub = CMS_data['HIJING_wo_subevents_red_filled_circle'].to_numpy()*10**(-3)
+CMS_2sub = CMS_data['HIJING_2subevents_blue_filled_square'].to_numpy()*10**(-3)
+CMS_4sub = CMS_data['HIJING_4subevents_green_filled_triangle'].to_numpy()*10**(-3)
+ax.plot(CMS_data['pT_GeV_red'], CMS_0sub,
+        'o', color='red', label='HIJING w/o subevents')
+ax.plot(CMS_data['pT_GeV_blue'], CMS_2sub,
+        's', color='blue', label='HIJING 2 subevents')
+ax.plot(CMS_data['pT_GeV_green'], CMS_4sub,
+        '^', color='green', label='HIJING 4 subevents')
+
+ax.axhline(0, color='black', linestyle='--')
+ax.set_xlabel('$p_T$ (GeV)')
+#ax.set_ylabel(r'$d_2\\{4\\} (\times10^{-3})$')
 ax.legend()
 plt.show()
 
@@ -555,19 +608,21 @@ dn4stde2 = np.zeros(100)
 
 pt_bins = np.zeros(100) 
 
-#CMS_pt = CMS_data['pT_GeV_green'].to_numpy()
-# CMS_pt = np.array([ 0.402,  0.713,  1.213,  1.717,  2.219,  2.718,  3.396,  4.414,
-#         5.426,  6.766,  8.82 , 10.86] )
-CMS_pt = np.array([ 0.402,  0.713,  1.213,  1.717,  2.219,  2.718,  3.396,  4.414] )
+#CMS_pt = CMS_data['pT_GeV_green'].to_numpy() 
+CMS_pt = np.array([ 0.402,  0.713,  1.213,  1.717,  2.219,  2.718,  3.396,  4.414,
+         5.426])#,  6.766,  8.82 , 10.86] )
+#CMS_pt = np.array([  0.402,  0.713,  1.213,  1.717,  2.219,  2.718,  3.396,  4.414, 5.426,  6.766,])  #8.82 , 10.86, 12.5] )
+CMS_pt = np.array([  0.713,   1.717,    4.414, 6.766,   10.86] )
 for i in range(0, len(CMS_pt)): 
     POI_start = CMS_pt[i]
-    if (i==len(CMS_pt)):
+    if (i==len(CMS_pt)-1):
         POI_end = 100
     else:
         POI_end = CMS_pt[i+1]
 
     results = pt_binning(testing12, mult_range, n, POI_start=POI_start, POI_end = POI_end,  momentum_cut=0, nudge=False) 
     print(results)
+    print(POI_start)
   
     dn4e4[i] = results[0]
     dn4stde4[i] = results[1]/np.sqrt(20)
@@ -621,16 +676,16 @@ arrays_dataframe = {
         "pt_bins": pt_bins
     
     }
-arrays_dataframe     
+arrays_dataframe       
 
 
 # Create a DataFrame by aligning arrays by index (shorter ones become NaN)
 df = pd.DataFrame(dict((k, pd.Series(v)) for k, v in arrays_dataframe.items()))
-df.to_csv("sevents0,2,4 100_200_Hijing_anaylsis.csv", index=False)     
+df.to_csv("Ref under 3GeV_100_200_Hijing_anaylsis.csv", index=False)      
 
 #plotting
 
-title_base = 'Hijing, mult=[100-200], p-pb, '
+title_base = 'Hijing, mult=[100-200], p-Pb, '
 x_label = 'pt'
 
 import matplotlib.pyplot as plt
@@ -646,6 +701,8 @@ dn2e0        = [[], []]
 dn2stde0     = [[], []] 
 dn4e4        = [[], []] 
 dn4stde4     = [[], []]
+dn4e2        = [[], []] 
+dn4stde2     = [[], []]
 
 
 pt = [[], []]
@@ -655,7 +712,7 @@ for i in range(1):
     momentum  = [0.0]
     
     #df = pd.read_csv("testing_CSM_ptHijing_anaylsis.csv")
-    df = pd.read_csv("100-200CSM_ptHijing_anaylsis.csv")
+    df = pd.read_csv("Ref under 3GeV_60_200_Hijing_anaylsis.csv")
     
     # Create separate NumPy arrays for each column
     cn4e0[i]        = df["cn4e0"       ].to_numpy()
@@ -668,19 +725,31 @@ for i in range(1):
     dn2stde0[i]     = df["dn2stde0"    ].to_numpy()
     dn4e4[i]        = df["dn4e4"       ].to_numpy()
     dn4stde4[i]     = df["dn4stde4"    ].to_numpy()
+    dn4e2[i]        = df["dn4e2"       ].to_numpy()
+    dn4stde2[i]     = df["dn4stde2"    ].to_numpy()
     pt[i]  = df["pt_bins"].to_numpy()
 
     
 plt.figure(0)
 plt.scatter(pt[0], dn4e4[0],  marker='^',  facecolors='none',edgecolors='green', label = 'calculated $d_2\\{4\\} 4 subevents') #minbias
 plt.errorbar(pt[0], dn4e4[0],  yerr=dn4stde4[0] , ecolor='red', linestyle='none')
-plt.scatter(CMS_data['pT_GeV_green'], CMS_4sub, marker = '^', color = 'green', label = 'CMS $d_2\\{4\\} 4 subevents') #minbias
+plt.scatter(CMS_data['pT_GeV_green'], CMS_4sub , marker = '^', color = 'green', label = 'CMS $d_2\\{4\\}$ 4 subevents') #minbias
 # plt.errorbar(pt[0], dn4e4[0],  yerr=dn4stde4[0] , ecolor='red', linestyle='none')
-plt.xlim(0, 10)
-plt.ylim(-.00025, .0001)
-
-
+plt.xlim(0, 11)
+plt.ylim(-.00005, .0001)
 plt.title(title_base+'$d_2\\{4\\}$, 4 subevnts', fontsize = 15)
+plt.ylabel("$d_2\\{4\\}$", fontsize = 12) 
+plt.xlabel(x_label, fontsize = 12)   
+plt.legend()
+
+plt.figure(2)
+plt.scatter(pt[0], dn4e2[0],  marker='s',  facecolors='none',edgecolors='blue', label = 'calculated $d_2\\{4\\} 2 subevents') #minbias
+plt.errorbar(pt[0], dn4e2[0],  yerr=dn4stde2[0] , ecolor='red', linestyle='none')
+plt.scatter(CMS_data['pT_GeV_blue'],CMS_2sub, marker = 's', color = 'blue', label = 'CMS $d_2\\{4\\}$ 2 subevents') #minbias
+# plt.errorbar(pt[0], dn4e4[0],  yerr=dn4stde4[0] , ecolor='red', linestyle='none')
+plt.xlim(0, 11)
+#plt.ylim(-.00005, .0001)
+plt.title(title_base+'$d_2\\{4\\}$, 2 subevnts', fontsize = 15)
 plt.ylabel("$d_2\\{4\\}$", fontsize = 12) 
 plt.xlabel(x_label, fontsize = 12)   
 plt.legend()
@@ -688,19 +757,31 @@ plt.legend()
 plt.figure(1)
 plt.scatter(pt[0], dn4e0[0],  marker='o',  facecolors='none',edgecolors='red', label = 'calculated $d_2\\{4\\}$ 0 subevents') #minbias
 plt.errorbar(pt[0], dn4e0[0],  yerr=dn4stde0[0] , ecolor='red', linestyle='none')
-plt.scatter(CMS_data['pT_GeV_red'], CMS_nosub, marker = 'o', color = 'red', label = 'CMS $d_2\\{4\\} 0 subevents') #CMS  
-#print(
-
+plt.scatter(CMS_data['pT_GeV_red'], CMS_0sub, marker = 'o', color = 'red', label = 'CMS $d_2\\{4\\}$ 0 subevents') #CMS  
 #old dn4e0 without the weights
 # xx = [1,2,3,4,5,6,7]
 # yyy = [-4.339150690482422e-05, -4.0682355383022836e-05, -3.4723915297962205e-05, -3.7009292040129205e-05, -2.3049754078975517e-05, -4.469431464210346e-05, -1.174165864141442e-05]
 # plt.scatter(xx, yyy,marker='o',  facecolors='none',edgecolors='red', label = 'calculated $d_2\\{4\\}$ 0 subevents, no weights')
 # plt.errorbar(pt[0], dn4e4[0],  yerr=dn4stde4[0] , ecolor='red', linestyle='none')
 plt.xlim(0, 8)
-plt.ylim(-.05*10**(-3), .09*10**(-3))
-
-
+#plt.ylim(-.05*10**(-3), .09*10**(-3))
 plt.title(title_base+'$d_2\\{4\\}$, 0 subevnts', fontsize = 15)
+plt.ylabel("$d_2\\{4\\}$", fontsize = 12) 
+plt.xlabel(x_label, fontsize = 12)   
+plt.legend()
+
+plt.figure(3)
+plt.scatter(pt[0], dn4e4[0],  marker='^',  facecolors='none',edgecolors='green', label = '4 subevents') #minbias
+plt.errorbar(pt[0], dn4e4[0],  yerr=dn4stde4[0] , ecolor='red', linestyle='none')
+
+'''plt.scatter(pt[0], dn4e2[0],  marker='s',  facecolors='none',edgecolors='blue', label = '2 subevents') #minbias
+plt.errorbar(pt[0], dn4e2[0],  yerr=dn4stde2[0] , ecolor='red', linestyle='none')'''
+
+plt.scatter(pt[0], dn4e0[0],  marker='o',  facecolors='none',edgecolors='red', label = '0 subevents') #minbias
+plt.errorbar(pt[0], dn4e0[0],  yerr=dn4stde0[0] , ecolor='red', linestyle='none')
+plt.xlim(0, 10) 
+#plt.ylim(-.00005, .00005)
+plt.title(title_base+'$calculated, d_2\\{4\\}$, all subevnts', fontsize = 15)
 plt.ylabel("$d_2\\{4\\}$", fontsize = 12) 
 plt.xlabel(x_label, fontsize = 12)   
 plt.legend()
