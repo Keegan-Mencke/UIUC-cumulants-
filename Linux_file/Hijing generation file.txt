@@ -1,0 +1,82 @@
+      PROGRAM PBPB_5T
+
+      CHARACTER*8 FRAME,PROJ,TARG
+
+      COMMON/HIPARNT/HIPR1(100),IHPR2(50),HINT1(100),IHNT2(50)
+      SAVE /HIPARNT/
+
+      COMMON/HIMAIN1/NATT,EATT,JATT,NT,NP,N0,N01,N10,N11
+      SAVE /HIMAIN1/
+
+      COMMON/HIMAIN2/KATT(130000,4),PATT(130000,4)
+      SAVE /HIMAIN2/
+
+      COMMON/HIMAIN3/VATT(130000,4)
+      SAVE /HIMAIN3/
+
+      COMMON/RANSEED/NSEED
+      SAVE /RANSEED/
+
+      INTEGER N_EVENT
+      INTEGER IE
+      INTEGER IAP,IZP,IAT,IZT
+
+      REAL EFRM
+      REAL BMIN,BMAX
+
+      EXTERNAL FILLTREE
+
+C------------------------------------------------------------
+C Random seed
+C------------------------------------------------------------
+
+      NSEED = 12345
+
+C------------------------------------------------------------
+C p + Pb at sqrt(s_NN)=8.19 TeV
+C------------------------------------------------------------
+
+      FRAME='CMS'
+      PROJ='P'
+      TARG='A'
+
+      EFRM = 8190.0
+
+      IAP = 1
+      IZP = 1
+      IAT = 208
+      IZT = 82
+
+      N_EVENT = 100
+
+C------------------------------------------------------------
+C HIJING switches
+C------------------------------------------------------------
+
+      IHPR2(10)=0
+
+C------------------------------------------------------------
+
+      CALL HIJSET(EFRM,FRAME,PROJ,TARG,
+     &            IAP,IZP,IAT,IZT)
+
+       WRITE(*,*)
+       WRITE(*,*) 'Jet cross section = ',HINT1(11),' mb'
+       WRITE(*,*) 'Total cross section = ',HINT1(13),' mb'
+       WRITE(*,*)
+
+      BMIN = 0.0
+      BMAX = 0.0
+
+      DO 100 IE=1,N_EVENT
+
+         CALL HIJING(FRAME,BMIN,BMAX)
+
+C         WRITE(*,*) IE,NATT,EATT
+
+         CALL FILLTREE(IE,NATT,KATT,PATT)
+
+100   CONTINUE
+
+      STOP
+      END

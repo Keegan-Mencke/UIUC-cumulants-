@@ -1,0 +1,21 @@
+tutorial%: tutorial%.cc
+        g++ $@.cc -o $@   -I$$PYTHIA8/include   -L$$PYTHIA8/lib   -lpythia8 -std=c++11
+
+#tutorial4: tutorial4.cc
+#       g++ $@.cc -o $@   -I$$PYTHIA8/include $$(shell root-config --cflags)  -L$$PYTHIA8/lib \
+#       $$(shell root-config --glibs)  -lpythia8 -std=c++11
+
+tutorial4:
+        g++ tutorial4.cc -o tutorial4 \
+        -I$(PYTHIA8)/include \
+        $(shell root-config --cflags) \
+        -L$(PYTHIA8)/lib \
+        $(shell root-config --glibs) \
+        -lpythia8 -std=c++17
+multiplicity%: multiplicity%.cc
+        g++ $@.cc -o $@ \
+        -I$(PYTHIA8)/include \
+        $(shell root-config --cflags) \
+        -L$(PYTHIA8)/lib \
+        $(shell root-config --glibs) \
+        -lpythia8 -std=c++17
