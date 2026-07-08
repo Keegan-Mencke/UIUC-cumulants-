@@ -1,0 +1,126 @@
+nano root_converter.cpp
+
+#include <TFile.h>
+#include <TTree.h>
+#include <vector>
+#include <cmath>
+
+inline int KATT(int i, int j, int *katt)
+{ return katt[i + 130000*j]; // I think the 130000 is  like the number of columns, so like number of phi, eta, pt, ...
+} // not the number of events
+
+inline float PATT(int i, int j, float *patt)
+{ return patt[i+130000*j];
+}
+
+
+extern "C" {
+
+    void filltree_(int *ievt, int *natt,
+                   int *katt,
+                   float *patt);
+}
+
+static TFile *f = nullptr;
+static TTree *t = nullptr;
+
+static int event;
+static float weight;
+
+static std::vector<float> phi, eta, pt; // define the vectors, that I always print
+static std::vector<float> particle_id, is_final; // that I sometimes print
+
+void init() {
+
+    f = new TFile("/mnt/e/data/.3GeV_p_pbHijing_1M.root","RECREATE");
+    t = new TTree("tree","HIJING PbPb 5.02 TeV");
+
+    t->Branch("event",&event);
+    t->Branch("weight",&weight);
+    t->Branch("phi",&phi);
+    t->Branch("eta",&eta);
+    t->Branch("pt",&pt);
+    t->Branch("particle_id", &particle_id);
+    t->Branch("is_final", &is_final);
+
+    weight = 1.0;
+}
+
+extern "C"
+void filltree_(int *ievt, int *natt,
+               int *katt,
+               float *patt)
+{
+    if (!t) init();
+
+    event = *ievt;
+
+    phi.clear();
+    eta.clear();
+    pt.clear();
+    is_final.clear();
+    particle_id.clear();
+
+    for (int i=0;i<*natt;i++) {
+
+
+
+//if (*ievt == 1 && i < 10) {
+  //  printf("i=%d  K1=%d K2=%d K3=%d K4=%d\n",
+    //   i,
+      // KATT(i,0,katt),
+       //KATT(i,1,katt),
+       //KATT(i,2,katt),
+       //KATT(i,3,katt));
+
+//    printf("%f %f %f %f\n",
+  //     PATT(i,0,patt),
+    //   PATT(i,1,patt),
+      // PATT(i,2,patt),
+       //PATT(i,3,patt));
+//}
+
+
+
+
+        int kf = KATT(i, 0, katt);
+
+        int is_finall = KATT(i, 3, katt);
+        if (is_finall != 1) continue;
+
+        // charged particles only
+        if (!(kf==211 || kf==-211 ||
+          kf==321 || kf==-321 ||
+              kf==2212 || kf==-2212 ||
+              kf==11 || kf==-11 ||
+              kf==13 || kf==-13)) continue;
+
+        double px = PATT(i, 0, patt);
+        double py = PATT(i, 1, patt);
+        double pz = PATT(i, 2, patt);
+
+        double ptv = sqrt(px*px + py*py);
+        if (!(ptv >= 0.3)) continue; // momentum cut , only particles with transverse momentum (strickly) greater than .4 are kept
+        double p   = sqrt(px*px + py*py + pz*pz);
+
+        if (p <= fabs(pz)) continue;
+
+        double etav = 0.5*log((p+pz)/(p-pz));
+        if (fabs(etav) > 2.5) continue;
+
+        double phiv = atan2(py,px);
+
+        phi.push_back(phiv);
+        eta.push_back(etav);
+        pt.push_back(ptv);
+        is_final.push_back(is_finall);
+        particle_id.push_back(kf);
+    }
+
+    t->Fill();
+
+    if (*ievt == 1000000) {
+        t->Write("", TObject::kOverwrite);
+        f->Close();
+    }
+}

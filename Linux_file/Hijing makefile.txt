@@ -1,0 +1,32 @@
+the make file (nano makefile)
+
+FC = gfortran
+CXX = g++
+
+FFLAGS = -O2 -std=legacy -fallow-argument-mismatch -w
+
+ROOTFLAGS = `root-config --cflags --libs`
+
+all: pbpb_5T
+
+pbpb_5T: pbpb_5T.o hijing.o hipyset.o root_converter.o
+        $(FC) -o pbpb_5T pbpb_5T.o hijing.o hipyset.o root_converter.o \
+        $(ROOTFLAGS) -lstdc++
+
+pbpb_5T.o: pbpb_5T.f
+        $(FC) $(FFLAGS) -c pbpb_5T.f
+
+hijing.o: hijing1.420.f
+        $(FC) $(FFLAGS) -c hijing1.420.f
+
+hipyset.o: hipyset1.36.f
+        $(FC) $(FFLAGS) -c hipyset1.36.f
+
+root_converter.o: root_converter.cpp
+        $(CXX) -O2 -c root_converter.cpp $(ROOTFLAGS)
+
+clean:
+        rm -f *.o pbpb_5T
+
+
+root converter
